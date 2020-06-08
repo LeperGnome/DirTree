@@ -5,24 +5,29 @@ import (
 	"io"
 	"os"
 	"sort"
-	"strings"
 )
 
 const (
-	curVisual  string = "├───"
-	lastVisual string = "└───"
-	prevVisual string = "│\t"
+	curVisual      string = "├───"
+	lastVisual     string = "└───"
+	prevVisual     string = "│\t"
+	prevLastVisual string = "\t"
 )
 
-func getFilePrefix(path string, isLast bool, depth int) string {
-	var prefix string
+func getFilePrefix(path string, isLast bool, parentsLastStatus []bool) (prefix string) {
 	vis := curVisual
 	if isLast {
 		vis = lastVisual
 	}
-	prefix = strings.Repeat(prevVisual, depth-1) + vis
-	return prefix
-
+	for _, parentIsLast := range parentsLastStatus {
+		if parentIsLast {
+			prefix += prevLastVisual
+		} else {
+			prefix += prevVisual
+		}
+	}
+	prefix += vis
+	return
 }
 
 func getOnlyDirs(objects []os.FileInfo) (dirs []os.FileInfo) {
@@ -43,7 +48,7 @@ func sizeOrEmpty(size int64) (sizeStr string) {
 	return
 }
 
-func describeDir(out io.Writer, path string, withFiles bool, curDepth int) error {
+func describeDir(out io.Writer, path string, withFiles bool, parentsLastStatus []bool) error {
 	curObject, err := os.Open(path)
 	if err != nil {
 		return err
@@ -58,21 +63,22 @@ func describeDir(out io.Writer, path string, withFiles bool, curDepth int) error
 	}
 	for i, info := range dirContent {
 		isLast := i == len(dirContent)-1
+
 		if info.IsDir() {
-			fmt.Fprintf(out, "%v%v\n", getFilePrefix(path, isLast, curDepth), info.Name())
-			err := describeDir(out, path+"/"+info.Name(), withFiles, curDepth+1)
+			fmt.Fprintf(out, "%v%v\n", getFilePrefix(path, isLast, parentsLastStatus), info.Name())
+			err := describeDir(out, path+"/"+info.Name(), withFiles, append(parentsLastStatus, isLast))
 			if err != nil {
 				return err
 			}
 		} else if withFiles {
-			fmt.Fprintf(out, "%v%v %v\n", getFilePrefix(path, isLast, curDepth), info.Name(), sizeOrEmpty(info.Size()))
+			fmt.Fprintf(out, "%v%v %v\n", getFilePrefix(path, isLast, parentsLastStatus), info.Name(), sizeOrEmpty(info.Size()))
 		}
 	}
 	return nil
 }
 
 func dirTree(out io.Writer, path string, withFiles bool) error {
-	err := describeDir(out, path, withFiles, 1)
+	err := describeDir(out, path, withFiles, []bool{})
 	if err != nil {
 		return err
 	}
