@@ -8,8 +8,34 @@ import (
 	"strings"
 )
 
+const (
+	curVisual  string = "├───"
+	prevVisual string = "│\t"
+)
+
+func getFilePrefix(path string) string {
+	var prefix string
+	n := strings.Count(path, "/")
+	if n > 0 {
+		prefix = strings.Repeat(prevVisual, n-1) + curVisual
+	}
+	return prefix
+
+}
+
+func step(path string, info os.FileInfo, err error) error {
+	fname := info.Name()
+	prefix := getFilePrefix(path)
+	fmt.Println(prefix, fname)
+	return nil
+}
+
 func dirTree(out io.Writer, path string, withFiles bool) error {
 	var res string
+	err := filepath.Walk(path, step)
+	if err != nil {
+		return err
+	}
 	fmt.Fprint(out, res)
 	return nil
 }
