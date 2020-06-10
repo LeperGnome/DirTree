@@ -51,12 +51,15 @@ func sizeOrEmpty(size int64) (sizeStr string) {
 func describeDir(out io.Writer, path string, withFiles bool, parentsLastStatus []bool) error {
 	curObject, err := os.Open(path)
 	if err != nil {
-		return err
+		fmt.Fprintf(out, "%vError:%v\n", getFilePrefix(path, true, parentsLastStatus), err.Error())
+		return nil
 	}
 	dirContent, err := curObject.Readdir(0)
 	if err != nil {
 		return err
 	}
+
+	curObject.Close()
 	sort.Slice(dirContent, func(i, j int) bool { return dirContent[i].Name() < dirContent[j].Name() })
 	if !withFiles {
 		dirContent = getOnlyDirs(dirContent)
